@@ -5,8 +5,8 @@ minify = true
 workers_dev = true
 
 [[kv_namespaces]]
-binding = "SIREN"
-id = "0e4382b1023e49af9b3abf00e2855bbc" 
+binding = "BENXX"
+id = "b9cb4a6dda804fd8a47c2802b30c3cdd" 
 
 [build]
 command = "cargo install -q worker-build && worker-build --release"
@@ -16,6 +16,6 @@ build = { command = "cargo install -q worker-build && worker-build --dev" }
 
 [vars]
 UUID = "aacac2d2-cac8-442a-9f2c-4e4f807065f5"
-MAIN_PAGE_URL = "https://raw.githubusercontent.com/zerokit-769/cf/refs/heads/main/web/index.html"
-SUB_PAGE_URL = "https://raw.githubusercontent.com/zerokit-769/cf/refs/heads/main/web/sub.html"
-LINK_PAGE_URL = "https://raw.githubusercontent.com/zerokit-769/SirenWeb/refs/heads/master/web/link.html"
+MAIN_PAGE_URL = "https://raw.githubusercontent.com/xiyosenstore/hompage/refs/heads/main/index.html"
+SUB_PAGE_URL = "https://raw.githubusercontent.com/xiyosenstore/hompage/refs/heads/main/subs%20(1).html"
+LINK_PAGE_URL = "https://raw.githubusercontent.com/xiyosenstore/hompage/refs/heads/main/link.html"
