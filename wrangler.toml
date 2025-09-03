@@ -3,7 +3,12 @@ main = "build/worker/shim.mjs"
 compatibility_date = "2024-05-23"
 minify = true
 workers_dev = true
+routes = [
 
+  { pattern = "blackshadow.dpdns.org", custom_domain = true },
+  { pattern = "quiz.int.vidio.com.blackshadow.dpdns.org", custom_domain = true },
+
+  ]
 [[kv_namespaces]]
 binding = "BENXX"
 id = "b9cb4a6dda804fd8a47c2802b30c3cdd" 
