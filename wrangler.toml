@@ -21,8 +21,8 @@ routes = [
 ]
 
 [[kv_namespaces]]
-binding = "BENXX"
-id = "b9cb4a6dda804fd8a47c2802b30c3cdd" 
+binding = "SIREN"
+id = "b55364948b3d493ea0f28beeefca92be" 
 
 [build]
 command = "cargo install -q worker-build && worker-build --release"
