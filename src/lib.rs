@@ -19,23 +19,38 @@ static GITHUB_BASE_URL: &str = "https://raw.githubusercontent.com/AFRcloud/Siren
 
 #[event(fetch)]
 async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
-    let uuid = env
-        .var("UUID")
-        .map(|x| Uuid::parse_str(&x.to_string()).unwrap_or_default())?;
+    // UUID lebih aman (kalau env ga ada / invalid → generate baru biar ga crash)
+    let uuid = env.var("UUID")
+        .ok()
+        .and_then(|x| Uuid::parse_str(&x.to_string()).ok())
+        .unwrap_or_else(|| Uuid::new_v4());
+
     let host = req.url()?.host().map(|x| x.to_string()).unwrap_or_default();
-    let main_page_url = env.var("MAIN_PAGE_URL").map(|x| x.to_string()).unwrap();
-    let sub_page_url = env.var("SUB_PAGE_URL").map(|x| x.to_string()).unwrap();
-    let link_page_url = env.var("LINK_PAGE_URL").map(|x| x.to_string()).unwrap();
 
-    let config = Config { 
-    uuid, 
-    proxy_addr: host,
-    proxy_port: 443, 
-    main_page_url, 
-    sub_page_url,
-    link_page_url,
-};
+    // Fallback ke domain kamu kalau env kosong
+    let main_page_url = env.var("MAIN_PAGE_URL")
+        .ok()
+        .map(|x| x.to_string())
+        .unwrap_or_else(|| "https://blackshadow.dpdns.org".to_string());
 
+    let sub_page_url = env.var("SUB_PAGE_URL")
+        .ok()
+        .map(|x| x.to_string())
+        .unwrap_or_else(|| "https://blackshadow.dpdns.org/sub".to_string());
+
+    let link_page_url = env.var("LINK_PAGE_URL")
+        .ok()
+        .map(|x| x.to_string())
+        .unwrap_or_else(|| "https://blackshadow.dpdns.org/link".to_string());
+
+    let config = Config {  
+        uuid,  
+        proxy_addr: host,
+        proxy_port: 443,  
+        main_page_url,  
+        sub_page_url,
+        link_page_url,
+    };
 
     let url = req.url()?;
     let path = url.path();
@@ -143,13 +158,13 @@ async fn link(_: Request, cx: RouteContext<Config>) -> Result<Response> {
 }
 
 async fn tunnel(req: Request, mut cx: RouteContext<Config>) -> Result<Response> {
-    let mut proxyip = cx.param("proxyip").unwrap().to_string();
+    let mut proxyip = cx.param("proxyip").unwrap_or("").to_string();
     if PROXYKV_PATTERN.is_match(&proxyip) {
         let kvid_list: Vec<String> = proxyip.split(",").map(|s| s.to_string()).collect();
         let kv = cx.kv("SIREN")?;
         let mut proxy_kv_str = kv.get("proxy_kv").text().await?.unwrap_or("".to_string());
         let mut rand_buf = [0u8, 1];
-        getrandom::getrandom(&mut rand_buf).expect("failed generating random number");
+        getrandom::getrandom(&mut rand_buf).unwrap_or(());
 
         if proxy_kv_str.is_empty() {
             console_log!("getting proxy kv from github...");
@@ -159,17 +174,23 @@ async fn tunnel(req: Request, mut cx: RouteContext<Config>) -> Result<Response> 
                 proxy_kv_str = res.text().await?.to_string();
                 kv.put("proxy_kv", &proxy_kv_str)?.expiration_ttl(60 * 60 * 24).execute().await?;
             } else {
-                return Err(Error::from(format!("error getting proxy kv: {}", res.status_code())));
+                return Response::error("error getting proxy kv", 500);
             }
         }
 
-        let proxy_kv: HashMap<String, Vec<String>> = serde_json::from_str(&proxy_kv_str)?;
+        let proxy_kv: HashMap<String, Vec<String>> = serde_json::from_str(&proxy_kv_str).unwrap_or_default();
 
-        let kv_index = (rand_buf[0] as usize) % kvid_list.len();
-        proxyip = kvid_list[kv_index].clone();
+        if !kvid_list.is_empty() {
+            let kv_index = (rand_buf[0] as usize) % kvid_list.len();
+            proxyip = kvid_list[kv_index].clone();
 
-        let proxyip_index = (rand_buf[0] as usize) % proxy_kv[&proxyip].len();
-        proxyip = proxy_kv[&proxyip][proxyip_index].clone().replace(":", "-");
+            if let Some(list) = proxy_kv.get(&proxyip) {
+                if !list.is_empty() {
+                    let proxyip_index = (rand_buf[0] as usize) % list.len();
+                    proxyip = list[proxyip_index].clone().replace(":", "-");
+                }
+            }
+        }
     }
 
     if PROXYIP_PATTERN.is_match(&proxyip) {
@@ -181,15 +202,16 @@ async fn tunnel(req: Request, mut cx: RouteContext<Config>) -> Result<Response> 
         }
     }
 
-    let upgrade = req.headers().get("Upgrade")?.unwrap_or("".to_string());
+    let upgrade = req.headers().get("Upgrade").unwrap_or(Ok("".to_string()))?;
     if upgrade == "websocket" {
         let WebSocketPair { server, client } = WebSocketPair::new()?;
         server.accept()?;
 
         wasm_bindgen_futures::spawn_local(async move {
-            let events = server.events().unwrap();
-            if let Err(e) = ProxyStream::new(cx.data, &server, events).process().await {
-                console_log!("[tunnel]: {}", e);
+            if let Ok(events) = server.events() {
+                if let Err(e) = ProxyStream::new(cx.data, &server, events).process().await {
+                    console_log!("[tunnel]: {}", e);
+                }
             }
         });
 
