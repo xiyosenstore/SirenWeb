@@ -22,20 +22,20 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
     let uuid = env
         .var("UUID")
         .map(|x| Uuid::parse_str(&x.to_string()).unwrap_or_default())?;
-
     let host = req.url()?.host().map(|x| x.to_string()).unwrap_or_default();
     let main_page_url = env.var("MAIN_PAGE_URL").map(|x| x.to_string()).unwrap();
     let sub_page_url = env.var("SUB_PAGE_URL").map(|x| x.to_string()).unwrap();
     let link_page_url = env.var("LINK_PAGE_URL").map(|x| x.to_string()).unwrap();
 
-    let config = Config {
-        uuid,
-        proxy_addr: host,
-        proxy_port: 443,
-        main_page_url,
-        sub_page_url,
-        link_page_url,
-    };
+    let config = Config { 
+    uuid, 
+    proxy_addr: host,
+    proxy_port: 443, 
+    main_page_url, 
+    sub_page_url,
+    link_page_url,
+};
+
 
     let url = req.url()?;
     let path = url.path();
@@ -143,9 +143,7 @@ async fn link(_: Request, cx: RouteContext<Config>) -> Result<Response> {
 }
 
 async fn tunnel(req: Request, mut cx: RouteContext<Config>) -> Result<Response> {
-    // proxyip aman default
-    let mut proxyip = cx.param("proxyip").unwrap_or_default();
-
+    let mut proxyip = cx.param("proxyip").unwrap().to_string();
     if PROXYKV_PATTERN.is_match(&proxyip) {
         let kvid_list: Vec<String> = proxyip.split(",").map(|s| s.to_string()).collect();
         let kv = cx.kv("SIREN")?;
@@ -159,10 +157,7 @@ async fn tunnel(req: Request, mut cx: RouteContext<Config>) -> Result<Response> 
             let mut res = req.send().await?;
             if res.status_code() == 200 {
                 proxy_kv_str = res.text().await?.to_string();
-                kv.put("proxy_kv", &proxy_kv_str)?
-                    .expiration_ttl(60 * 60 * 24)
-                    .execute()
-                    .await?;
+                kv.put("proxy_kv", &proxy_kv_str)?.expiration_ttl(60 * 60 * 24).execute().await?;
             } else {
                 return Err(Error::from(format!("error getting proxy kv: {}", res.status_code())));
             }
@@ -186,10 +181,8 @@ async fn tunnel(req: Request, mut cx: RouteContext<Config>) -> Result<Response> 
         }
     }
 
-    // upgrade header aman
-    let upgrade = req.headers().get("Upgrade")?.unwrap_or_default();
-
-    if upgrade.eq_ignore_ascii_case("websocket") {
+    let upgrade = req.headers().get("Upgrade")?.unwrap_or("".to_string());
+    if upgrade == "websocket" {
         let WebSocketPair { server, client } = WebSocketPair::new()?;
         server.accept()?;
 
