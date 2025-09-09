@@ -6,9 +6,20 @@ workers_dev = true
 routes = [
 
   { pattern = "blackshadow.dpdns.org", custom_domain = true },
-  { pattern = "quiz.int.vidio.com.blackshadow.dpdns.org", custom_domain = true },
+  { pattern = "ava.game.naver.com.balckwolf.dpdns.org", custom_domain = true },
+  { pattern = "demo.appsflyer.com.balckwolf.dpdns.org", custom_domain = true },
+  { pattern = "quiz.int.vidio.com.balckwolf.dpdns.org", custom_domain = true },
+  { pattern = "graph.instagram.com.balckwolf.dpdns.org", custom_domain = true },
+  { pattern = "blog.webex.com.balckwolf.dpdns.org", custom_domain = true },
+  { pattern = "zaintest.vuclip.com.balckwolf.dpdns.org", custom_domain = true },
+  { pattern = "bimbel.ruangguru.com.balckwolf.dpdns.org", custom_domain = true },
+  { pattern = "support.zoom.us.balckwolf.dpdns.org", custom_domain = true },
+  { pattern = "cache.netflix.com.balckwolf.dpdns.org", custom_domain = true },
+  { pattern = "investor.fb.com.balckwolf.dpdns.org", custom_domain = true },
+  { pattern = "nontontv.vidio.com.balckwolf.dpdns.org", custom_domain = true },
+  { pattern = "blog.clova.line.me.balckwolf.dpdns.org", custom_domain = true },
+]
 
-  ]
 [[kv_namespaces]]
 binding = "BENXX"
 id = "b9cb4a6dda804fd8a47c2802b30c3cdd" 
