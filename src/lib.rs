@@ -58,41 +58,6 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
         .await
 }
 
-async fn handle_css_file(req: Request) -> Result<Response> {
-    let url = req.url()?;
-    let filename = url.path().strip_prefix("/css/").unwrap_or("");
-    let css_url = format!("{}/css/{}", GITHUB_BASE_URL, filename);
-    let req = Fetch::Url(Url::parse(&css_url)?);
-    let mut res = req.send().await?;
-
-    if res.status_code() == 200 {
-        let css = res.text().await?;
-        let mut headers = Headers::new();
-        headers.set("Content-Type", "text/css")?;
-        headers.set("Cache-Control", "public, max-age=86400")?;
-        Ok(Response::ok(css)?.with_headers(headers))
-    } else {
-        Response::error("CSS file not found", 404)
-    }
-}
-
-async fn handle_js_file(req: Request) -> Result<Response> {
-    let url = req.url()?;
-    let filename = url.path().strip_prefix("/js/").unwrap_or("");
-    let js_url = format!("{}/js/{}", GITHUB_BASE_URL, filename);
-    let req = Fetch::Url(Url::parse(&js_url)?);
-    let mut res = req.send().await?;
-
-    if res.status_code() == 200 {
-        let js = res.text().await?;
-        let mut headers = Headers::new();
-        headers.set("Content-Type", "application/javascript")?;
-        headers.set("Cache-Control", "public, max-age=86400")?;
-        Ok(Response::ok(js)?.with_headers(headers))
-    } else {
-        Response::error("JavaScript file not found", 404)
-    }
-}
 
 async fn handle_image_file(req: Request) -> Result<Response> {
     let url = req.url()?;
