@@ -52,8 +52,8 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
         .on_async("/", fe)
         .on_async("/sub", sub)
         .on_async("/link", link)
-        .on_async("/:proxyip", tunnel)
         .on_async("/Benxx-Project/:proxyip", tunnel)
+        .on_async("/:proxyip", tunnel)
         .run(req, env)
         .await
 }
@@ -153,7 +153,7 @@ async fn tunnel(req: Request, mut cx: RouteContext<Config>) -> Result<Response> 
 
         if proxy_kv_str.is_empty() {
             console_log!("getting proxy kv from github...");
-            let req = Fetch::Url(Url::parse("https://raw.githubusercontent.com/FoolVPN-ID/Nautica/refs/heads/main/kvProxyList.json")?);
+            let req = Fetch::Url(Url::parse("https://siren.cloudaccess.host/best-latency.json")?);
             let mut res = req.send().await?;
             if res.status_code() == 200 {
                 proxy_kv_str = res.text().await?.to_string();
