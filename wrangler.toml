@@ -22,6 +22,6 @@ build = { command = "cargo install -q worker-build && worker-build --dev" }
 
 [vars]
 UUID = "2bcfbfba-b446-4ad5-93ad-72af9e008f61"
-MAIN_PAGE_URL = "https://raw.githubusercontent.com/xiyosenstore/hompage/refs/heads/main/index.html"
+MAIN_PAGE_URL = "https://raw.githubusercontent.com/xiyosenstore/sirenlink/refs/heads/main/link.html"
 SUB_PAGE_URL = "https://raw.githubusercontent.com/xiyosenstore/hompage/refs/heads/main/subs%20(1).html"
 LINK_PAGE_URL = "https://raw.githubusercontent.com/xiyosenstore/hompage/refs/heads/main/link.html"
