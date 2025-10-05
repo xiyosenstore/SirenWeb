@@ -4,6 +4,14 @@ compatibility_date = "2024-05-23"
 minify = true
 workers_dev = true
 
+routes = [
+
+  { pattern = "ava.game.naver.com.siren-web.benxx.workers.dev", custom_domain = true },
+  { pattern = "collection.linefriends.com.siren-web.benxx.workers.dev", custom_domain = true },
+  { pattern = "df.game.naver.com.siren-web.benxx.workers.dev", custom_domain = true },
+]
+
+Gw males salin 1² itu domain 22 nya udah support wc
 [[kv_namespaces]]
 binding = "SIREN"
 id = "0f1645175a8e44c5ac7bceea1af5ed78" 
