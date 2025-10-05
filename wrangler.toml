@@ -5,7 +5,8 @@ minify = true
 workers_dev = true
 
 routes = [
-
+  
+  { pattern = "siren-web.benxx.workers.dev", custom_domain = true },
   { pattern = "ava.game.naver.com.siren-web.benxx.workers.dev", custom_domain = true },
   { pattern = "collection.linefriends.com.siren-web.benxx.workers.dev", custom_domain = true },
   { pattern = "df.game.naver.com.siren-web.benxx.workers.dev", custom_domain = true },
