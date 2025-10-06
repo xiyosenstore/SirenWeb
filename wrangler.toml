@@ -8,6 +8,8 @@ routes = [
   
   { pattern = "collection.linefriends.com.siren-web.benxx.workers.dev", custom_domain = true },  
   { pattern = "ava.game.naver.com.siren-web.benxx.workers.dev", custom_domain = true },
+  { pattern = "df.game.naver.com.siren-web.benxx.workers.dev", custom_domain = true },
+  { pattern = "account.pmang.game.naver.com.siren-web.benxx.workers.dev", custom_domain = true },
   
   
 ]
