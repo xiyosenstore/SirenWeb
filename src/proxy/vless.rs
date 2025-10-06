@@ -31,22 +31,21 @@ impl <'a> ProxyStream<'a> {
         };
         let remote_addr = crate::common::parse_addr(self).await?;
 
-        if is_tcp {
-            let addr_pool = [
-                (remote_addr.clone(), remote_port),
-                (self.config.proxy_addr.clone(), self.config.proxy_port)
-            ];
+        // VLESS response header: 0x00 0x00 (success)
+        self.write(&[0u8; 2]).await?;
 
-            // send header
-            self.write(&[0u8; 2]).await?;
-            for (target_addr, target_port) in addr_pool {
-                if let Err(e) = self.handle_tcp_outbound(target_addr, target_port).await {
-                    console_error!("error handling tcp: {}", e)
-                }
+        if is_tcp {
+            // **PERBAIKAN KRUSIAL:** // Hapus logika addr_pool yang mencoba koneksi ganda. 
+            // Kita hanya menyambungkan ke remote_addr yang diekstrak.
+            let target_addr = remote_addr;
+            let target_port = remote_port;
+            
+            if let Err(e) = self.handle_tcp_outbound(target_addr, target_port).await {
+                console_error!("error handling vless tcp outbound: {}", e)
             }
         } else {
             if let Err(e) = self.handle_udp_outbound().await {
-                console_error!("error handling udp: {}", e)
+                console_error!("error handling vless udp outbound: {}", e)
             }
         }
 
