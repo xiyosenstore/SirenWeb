@@ -1,18 +1,9 @@
-name = "changli"
+name = "siren-web"
 main = "build/worker/shim.mjs"
 compatibility_date = "2024-05-23"
 minify = true
 workers_dev = true
 
-routes = [
-  
-  { pattern = "changli.ouzora.dpdns.org", custom_domain = true },  
-  { pattern = "collection.linefriends.com.changli.ouzora.dpdns.org", custom_domain = true },  
-  { pattern = "ava.game.naver.com.changli.ouzora.dpdns.org", custom_domain = true },
-  { pattern = "bimbel.ruangguru.com.changli.ouzora.dpdns.org", custom_domain = true },
-  { pattern = "support.zoom.us.siren.changli.dpdns.org", custom_domain = true },
-  { pattern = "nontontv.vidio.com.siren.changli.dpdns.org", custom_domain = true },
-]
 
 [[kv_namespaces]]
 binding = "SIREN"
