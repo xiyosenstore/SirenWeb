@@ -1,3 +1,13 @@
+// --- Deklarasi Modul Kritis yang Hilang ---
+// Ini memberitahu compiler bahwa file-file .rs ini harus dihubungkan.
+mod hash;
+mod vmess;
+mod vless;
+mod trojan;
+mod shadowsocks;
+mod conn;
+// ------------------------------------------
+
 mod common;
 mod config;
 mod proxy;
@@ -159,7 +169,8 @@ async fn tunnel(req: Request, mut cx: RouteContext<Config>) -> Result<Response> 
         let mut proxy_kv_str = kv.get("proxy_kv").text().await?.unwrap_or_default();
         
         let mut rand_buf = [0u8; 1];
-        getrandom::getrandom(&mut rand_buf).expect("failed generating random number");
+        // Menggunakan worker::getrandom::getrandom()
+        worker::getrandom::getrandom(&mut rand_buf).expect("failed generating random number");
 
         if proxy_kv_str.is_empty() {
             console_log!("getting proxy kv from github...");
