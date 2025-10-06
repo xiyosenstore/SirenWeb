@@ -1,13 +1,3 @@
-// --- Deklarasi Modul Kritis yang Hilang ---
-// Ini memberitahu compiler bahwa file-file .rs ini harus dihubungkan.
-mod hash;
-mod vmess;
-mod vless;
-mod trojan;
-mod shadowsocks;
-mod conn;
-// ------------------------------------------
-
 mod common;
 mod config;
 mod proxy;
@@ -18,6 +8,7 @@ use crate::proxy::*;
 use std::collections::HashMap;
 use uuid::Uuid;
 use worker::*;
+use worker::getrandom; // FIX E0433: Import getrandom dari worker
 use once_cell::sync::Lazy;
 use regex::Regex;
 
@@ -169,8 +160,7 @@ async fn tunnel(req: Request, mut cx: RouteContext<Config>) -> Result<Response> 
         let mut proxy_kv_str = kv.get("proxy_kv").text().await?.unwrap_or_default();
         
         let mut rand_buf = [0u8; 1];
-        // Menggunakan worker::getrandom::getrandom()
-        worker::getrandom::getrandom(&mut rand_buf).expect("failed generating random number");
+        getrandom::getrandom(&mut rand_buf).expect("failed generating random number"); // E0433: Sekarang getrandom sudah diimport di atas
 
         if proxy_kv_str.is_empty() {
             console_log!("getting proxy kv from github...");
@@ -196,8 +186,8 @@ async fn tunnel(req: Request, mut cx: RouteContext<Config>) -> Result<Response> 
         match proxy_kv.get(selected_kv_id) {
             Some(ips) => {
                 let proxyip_index = (rand_buf[0] as usize) % ips.len();
-                // Mengganti ':' menjadi '-' agar sesuai dengan PROXYIP_PATTERN
-                proxyip = ips[proxyip_index].clone().replace(':', '-');
+                // FIX E0308: Mengganti char literal '-' menjadi string literal "-"
+                proxyip = ips[proxyip_index].clone().replace(':', "-"); 
             },
             None => {
                 console_error!("Selected KV ID '{}' not found in proxy list.", selected_kv_id);
