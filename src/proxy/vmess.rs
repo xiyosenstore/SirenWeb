@@ -20,7 +20,7 @@ use worker::*;
 
 
 impl <'a> ProxyStream<'a> {
-    // Fungsi 'aead_decrypt' saya biarkan utuh karena implementasi VMess AEAD-nya sudah benar.
+    // Fungsi ini (aead_decrypt) SANGAT SENSITIF terhadap VMess AEAD dan dibiarkan UTUH.
     async fn aead_decrypt(&mut self) -> Result<Vec<u8>> {
         let key = crate::md5!(
             &self.config.uuid.as_bytes(),
@@ -104,7 +104,7 @@ impl <'a> ProxyStream<'a> {
     pub async fn process_vmess(&mut self) -> Result<()> {
         let mut buf = Cursor::new(self.aead_decrypt().await?);
 
-        // ... (Header Parsing: Version, IV, Key, Options, Command) ...
+        // [...] (Parsing header VMess)
 
         let version = buf.read_u8().await?;
         if version != 1 {
@@ -130,7 +130,7 @@ impl <'a> ProxyStream<'a> {
         };
         let remote_addr = crate::common::parse_addr(&mut buf).await?;
 
-        // ... (Response Header Encryption Logic) ...
+        // [...] (Response Header Encryption Logic)
 
         // encrypt payload
         let key = &crate::sha256!(&key)[..16];
@@ -159,15 +159,14 @@ impl <'a> ProxyStream<'a> {
         self.write(&header).await?;
 
         
-        // **PERBAIKAN KRUSIAL:**
-        // Hapus logika 'addr_pool' yang mencoba menyambung ke alamat proxy internal.
+        // **PERBAIKAN FINAL:**
+        // HANYA mencoba koneksi ke alamat tujuan yang valid (remote_addr:remote_port).
         if is_tcp {
-            // Kita HANYA menyambung ke alamat tujuan yang diekstrak dari header VMess.
             let target_addr = remote_addr;
             let target_port = remote_port;
             
             if let Err(e) = self.handle_tcp_outbound(target_addr, target_port).await {
-                // Log error yang spesifik jika koneksi keluar (outbound) gagal
+                // Log error yang lebih spesifik
                 console_error!("error handling vmess tcp outbound: {}", e)
             }
         } else {
