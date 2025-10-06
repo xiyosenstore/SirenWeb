@@ -7,7 +7,7 @@ workers_dev = true
 routes = [
   
   { pattern = "collection.linefriends.com.siren-web.benxx.workers.dev", custom_domain = true },  
-  { pattern = "ava.game.naver.com.changli.siren-web.benxx.workers.dev", custom_domain = true },
+  { pattern = "ava.game.naver.com.siren-web.benxx.workers.dev", custom_domain = true },
   
   
 ]
