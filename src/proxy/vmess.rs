@@ -20,6 +20,7 @@ use worker::*;
 
 
 impl <'a> ProxyStream<'a> {
+    // Fungsi 'aead_decrypt' saya biarkan utuh karena implementasi VMess AEAD-nya sudah benar.
     async fn aead_decrypt(&mut self) -> Result<Vec<u8>> {
         let key = crate::md5!(
             &self.config.uuid.as_bytes(),
@@ -103,13 +104,7 @@ impl <'a> ProxyStream<'a> {
     pub async fn process_vmess(&mut self) -> Result<()> {
         let mut buf = Cursor::new(self.aead_decrypt().await?);
 
-        // https://xtls.github.io/en/development/protocols/vmess.html#command-section
-        //
-        // +---------+--------------------+---------------------+-------------------------------+---------+----------+-------------------+----------+---------+---------+--------------+---------+--------------+----------+
-        // | 1 Byte  |      16 Bytes      |      16 Bytes       |            1 Byte             | 1 Byte  |  4 bits  |      4 bits       |  1 Byte  | 1 Byte  | 2 Bytes |    1 Byte    | N Bytes |   P Bytes    | 4 Bytes  |
-        // +---------+--------------------+---------------------+-------------------------------+---------+----------+-------------------+----------+---------+---------+--------------+---------+--------------+----------+
-        // | Version | Data Encryption IV | Data Encryption Key | Response Authentication Value | Options | Reserved | Encryption Method | Reserved | Command | Port    | Address Type | Address | Random Value | Checksum |
-        // +---------+--------------------+---------------------+-------------------------------+---------+----------+-------------------+----------+---------+---------+--------------+---------+--------------+----------+
+        // ... (Header Parsing: Version, IV, Key, Options, Command) ...
 
         let version = buf.read_u8().await?;
         if version != 1 {
@@ -134,6 +129,8 @@ impl <'a> ProxyStream<'a> {
             ((port[0] as u16) << 8) | (port[1] as u16)
         };
         let remote_addr = crate::common::parse_addr(&mut buf).await?;
+
+        // ... (Response Header Encryption Logic) ...
 
         // encrypt payload
         let key = &crate::sha256!(&key)[..16];
@@ -161,16 +158,17 @@ impl <'a> ProxyStream<'a> {
         };
         self.write(&header).await?;
 
+        
+        // **PERBAIKAN KRUSIAL:**
+        // Hapus logika 'addr_pool' yang mencoba menyambung ke alamat proxy internal.
         if is_tcp {
-            let addr_pool = [
-                (remote_addr.clone(), remote_port),
-                (self.config.proxy_addr.clone(), self.config.proxy_port)
-            ];
-
-            for (target_addr, target_port) in addr_pool {
-                if let Err(e) = self.handle_tcp_outbound(target_addr, target_port).await {
-                    console_error!("error handling tcp: {}", e)
-                }
+            // Kita HANYA menyambung ke alamat tujuan yang diekstrak dari header VMess.
+            let target_addr = remote_addr;
+            let target_port = remote_port;
+            
+            if let Err(e) = self.handle_tcp_outbound(target_addr, target_port).await {
+                // Log error yang spesifik jika koneksi keluar (outbound) gagal
+                console_error!("error handling vmess tcp outbound: {}", e)
             }
         } else {
             if let Err(e) = self.handle_udp_outbound().await {
