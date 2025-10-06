@@ -78,24 +78,30 @@ impl<'a> ProxyStream<'a> {
             console_log!("Vmess detected!");
             self.process_vmess().await
         }
-
     }
 
+    // --- PERBAIKAN PENTING DI SINI ---
     pub async fn handle_tcp_outbound(&mut self, addr: String, port: u16) -> Result<()> {
+        // Tambahkan cek untuk mencegah TypeError jika 'addr' kosong
+        if addr.is_empty() {
+            return Err(Error::RustError("Target address is empty. Cannot connect.".to_string()));
+        }
+        
         console_log!("connecting to upstream {}:{}", addr, port);
 
         let mut remote_socket = Socket::builder().connect(addr, port).map_err(|e| {
-            Error::RustError(e.to_string())
+            // Error ini akan menangkap TypeError
+            Error::RustError(format!("Socket connection error (connect): {}", e.to_string()))
         })?;
 
         remote_socket.opened().await.map_err(|e| {
-            Error::RustError(e.to_string())
+            Error::RustError(format!("Socket connection error (opened): {}", e.to_string()))
         })?;
 
         tokio::io::copy_bidirectional(self, &mut remote_socket)
             .await
             .map_err(|e| {
-                Error::RustError(e.to_string())
+                Error::RustError(format!("Bidirectional copy error: {}", e.to_string()))
             })?;
         Ok(())
     }
@@ -121,17 +127,21 @@ impl<'a> AsyncRead for ProxyStream<'a> {
         let mut this = self.project();
 
         loop {
+            // Cek dan transfer data dari internal buffer
             let size = std::cmp::min(this.buffer.len(), buf.remaining());
             if size > 0 {
                 buf.put_slice(&this.buffer.split_to(size));
                 return Poll::Ready(Ok(()));
             }
 
+            // Jika buffer kosong, coba ambil data dari WebSocket
             match this.events.as_mut().poll_next(cx) {
                 Poll::Ready(Some(Ok(WebsocketEvent::Message(msg)))) => {
                     msg.bytes().iter().for_each(|x| this.buffer.put_slice(&x));
+                    // Setelah mengisi buffer, loop kembali untuk transfer data
                 }
                 Poll::Pending => return Poll::Pending,
+                // Jika terjadi Close/Error/None, dan buffer kosong, kirim EOF
                 _ => return Poll::Ready(Ok(())),
             }
         }
