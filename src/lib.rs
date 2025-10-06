@@ -8,7 +8,6 @@ use crate::proxy::*;
 use std::collections::HashMap;
 use uuid::Uuid;
 use worker::*;
-use worker::getrandom; // FIX E0433: Import getrandom dari worker
 use once_cell::sync::Lazy;
 use regex::Regex;
 
@@ -16,36 +15,31 @@ static PROXYIP_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^.+-\d+$").unwra
 static PROXYKV_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"^([A-Z]{2})").unwrap());
 
 // Base URL for GitHub raw content
-static GITHUB_BASE_URL: &str = "https://raw.githubusercontent.com/xiyosenstore/SirenWeb/refs/heads/master/web";
+static GITHUB_BASE_URL: &str = "https://raw.githubusercontent.com/AFRcloud/SirenWeb/refs/heads/master/web";
 
 #[event(fetch)]
 async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
-    // Pastikan UUID di-parse dengan aman.
     let uuid = env
         .var("UUID")
         .map(|x| Uuid::parse_str(&x.to_string()).unwrap_or_default())?;
-    
     let host = req.url()?.host().map(|x| x.to_string()).unwrap_or_default();
-    
-    // Pastikan variabel environment ada (menggunakan `?` untuk early return Error jika tidak ada)
-    let main_page_url = env.var("MAIN_PAGE_URL")?.to_string();
-    let sub_page_url = env.var("SUB_PAGE_URL")?.to_string();
-    let link_page_url = env.var("LINK_PAGE_URL")?.to_string();
+    let main_page_url = env.var("MAIN_PAGE_URL").map(|x| x.to_string()).unwrap();
+    let sub_page_url = env.var("SUB_PAGE_URL").map(|x| x.to_string()).unwrap();
+    let link_page_url = env.var("LINK_PAGE_URL").map(|x| x.to_string()).unwrap();
 
     let config = Config { 
-        uuid, 
-        proxy_addr: host, // Default: Host Worker Anda
-        proxy_port: 443,  // Default: Port 443
-        main_page_url, 
-        sub_page_url,
-        link_page_url,
-    };
+    uuid, 
+    proxy_addr: host,
+    proxy_port: 443, 
+    main_page_url, 
+    sub_page_url,
+    link_page_url,
+};
 
 
     let url = req.url()?;
     let path = url.path();
 
-    // Rute aset statis
     if path.starts_with("/css/") {
         return handle_css_file(req).await;
     } else if path.starts_with("/js/") {
@@ -54,13 +48,12 @@ async fn main(req: Request, env: Env, _: Context) -> Result<Response> {
         return handle_image_file(req).await;
     }
 
-    // Rute utama (Router)
     Router::with_data(config)
         .on_async("/", fe)
         .on_async("/sub", sub)
         .on_async("/link", link)
         .on_async("/:proxyip", tunnel)
-        .on_async("/Benxx-Project/:proxyip", tunnel)
+        .on_async("/Inconigto-Mode/:proxyip", tunnel)
         .run(req, env)
         .await
 }
@@ -138,94 +131,70 @@ async fn get_response_from_url(url: String) -> Result<Response> {
 }
 
 async fn fe(_: Request, cx: RouteContext<Config>) -> Result<Response> {
-    get_response_from_url(cx.data.main_page_url.clone()).await
+    get_response_from_url(cx.data.main_page_url).await
 }
 
 async fn sub(_: Request, cx: RouteContext<Config>) -> Result<Response> {
-    get_response_from_url(cx.data.sub_page_url.clone()).await
+    get_response_from_url(cx.data.sub_page_url).await
 }
 
 async fn link(_: Request, cx: RouteContext<Config>) -> Result<Response> {
-    get_response_from_url(cx.data.link_page_url.clone()).await
+    get_response_from_url(cx.data.link_page_url).await
 }
 
 async fn tunnel(req: Request, mut cx: RouteContext<Config>) -> Result<Response> {
     let mut proxyip = cx.param("proxyip").unwrap().to_string();
-    
-    // Logic untuk memilih proxy dari KV storage
     if PROXYKV_PATTERN.is_match(&proxyip) {
-        let kvid_list: Vec<String> = proxyip.split(',').map(|s| s.to_string()).collect();
+        let kvid_list: Vec<String> = proxyip.split(",").map(|s| s.to_string()).collect();
         let kv = cx.kv("SIREN")?;
-        
-        let mut proxy_kv_str = kv.get("proxy_kv").text().await?.unwrap_or_default();
-        
-        let mut rand_buf = [0u8; 1];
-        getrandom::getrandom(&mut rand_buf).expect("failed generating random number"); // E0433: Sekarang getrandom sudah diimport di atas
+        let mut proxy_kv_str = kv.get("proxy_kv").text().await?.unwrap_or("".to_string());
+        let mut rand_buf = [0u8, 1];
+        getrandom::getrandom(&mut rand_buf).expect("failed generating random number");
 
         if proxy_kv_str.is_empty() {
             console_log!("getting proxy kv from github...");
-            let req = Fetch::Url(Url::parse("https://siren.cloudaccess.host/best-latency.json")?);
+            let req = Fetch::Url(Url::parse("https://raw.githubusercontent.com/AFRcloud/ProxyList/refs/heads/main/kvProxyList.json")?);
             let mut res = req.send().await?;
             if res.status_code() == 200 {
-                proxy_kv_str = res.text().await?;
-                // Set TTL selama 24 jam
+                proxy_kv_str = res.text().await?.to_string();
                 kv.put("proxy_kv", &proxy_kv_str)?.expiration_ttl(60 * 60 * 24).execute().await?;
             } else {
-                return Err(Error::from(format!("error getting proxy kv: status code {}", res.status_code())));
+                return Err(Error::from(format!("error getting proxy kv: {}", res.status_code())));
             }
         }
 
-        // Deserialisasi JSON ke HashMap.
-        let proxy_kv: HashMap<String, Vec<String>> = serde_json::from_str(&proxy_kv_str)
-            .map_err(|e| Error::RustError(format!("Failed to parse proxy KV JSON: {}", e)))?;
+        let proxy_kv: HashMap<String, Vec<String>> = serde_json::from_str(&proxy_kv_str)?;
 
-        // Mengambil KV ID dan IP/Port secara acak
         let kv_index = (rand_buf[0] as usize) % kvid_list.len();
-        let selected_kv_id = &kvid_list[kv_index];
+        proxyip = kvid_list[kv_index].clone();
 
-        match proxy_kv.get(selected_kv_id) {
-            Some(ips) => {
-                let proxyip_index = (rand_buf[0] as usize) % ips.len();
-                // FIX E0308: Mengganti char literal '-' menjadi string literal "-"
-                proxyip = ips[proxyip_index].clone().replace(':', "-"); 
-            },
-            None => {
-                console_error!("Selected KV ID '{}' not found in proxy list.", selected_kv_id);
-                // Jika tidak ditemukan, lanjutkan menggunakan proxyip default dari URL
-            }
-        }
+        let proxyip_index = (rand_buf[0] as usize) % proxy_kv[&proxyip].len();
+        proxyip = proxy_kv[&proxyip][proxyip_index].clone().replace(":", "-");
     }
 
-    // Logic untuk mengupdate proxy_addr dan proxy_port di Config
     if PROXYIP_PATTERN.is_match(&proxyip) {
         if let Some((addr, port_str)) = proxyip.split_once('-') {
             if let Ok(port) = port_str.parse() {
-                // Config diubah, tetapi sekarang ini hanya digunakan sebagai nilai default
-                // dan tidak akan menyebabkan koneksi ganda.
                 cx.data.proxy_addr = addr.to_string();
                 cx.data.proxy_port = port;
             }
         }
     }
 
-    // Penanganan WebSocket (Core Tunneling Logic)
-    let upgrade = req.headers().get("Upgrade")?.unwrap_or_default();
-    if upgrade.eq_ignore_ascii_case("websocket") {
+    let upgrade = req.headers().get("Upgrade")?.unwrap_or("".to_string());
+    if upgrade == "websocket" {
         let WebSocketPair { server, client } = WebSocketPair::new()?;
         server.accept()?;
 
-        // Panggil ProxyStream::new dengan Config yang sudah diperbarui
         wasm_bindgen_futures::spawn_local(async move {
             let events = server.events().unwrap();
-            // Semua logika koneksi ada di dalam process(), yang sekarang sudah aman
             if let Err(e) = ProxyStream::new(cx.data, &server, events).process().await {
-                console_log!("[tunnel error]: {}", e);
+                console_log!("[tunnel]: {}", e);
             }
         });
 
         Response::from_websocket(client)
     } else {
-        // Jika bukan WebSocket, kembalikan response default
         Response::from_html("hi from wasm!")
     }
 }
